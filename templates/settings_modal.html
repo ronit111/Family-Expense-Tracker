@@ -1,0 +1,147 @@
+<!-- Settings Modal (Bootstrap 5) -->
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" id="settingsForm" autocomplete="off">
+        <div class="modal-header">
+          <h5 class="modal-title" id="settingsModalLabel">Settings</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% if message %}
+            {% if status == 'success' %}
+              <div class="alert alert-success text-center">{{ message }}</div>
+            {% else %}
+              <div class="alert alert-danger text-center">Failed to save settings: {{ message }}</div>
+            {% endif %}
+          {% endif %}
+          <div class="mb-3">
+            <label for="individuals" class="form-label">Persons (comma separated)</label>
+            <input type="text" class="form-control" id="personsInput" name="individuals" value="{{ individuals|join(', ') }}" autocomplete="off" />
+          </div>
+          <div class="mb-3">
+            <label for="currency" class="form-label">Currency</label>
+            <select class="form-select" id="currency" name="currency">
+              {% for cur in ['INR', 'USD', 'EUR', 'GBP', 'JPY'] %}
+                <option value="{{ cur }}" {% if currency == cur %}selected{% endif %}>{{ cur }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer d-flex flex-column align-items-stretch gap-2">
+          <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+<script>
+document.getElementById('settingsForm').onsubmit = async function(e) {
+  e.preventDefault();
+  const form = this;
+  // Remove any old alerts
+  form.querySelectorAll('.alert').forEach(el => el.remove());
+  // Disable Save button
+  const saveBtn = form.querySelector('button[type="submit"]');
+  if (saveBtn) saveBtn.disabled = true;
+  const data = new FormData(form);
+  let json = null;
+  try {
+    const resp = await fetch('/settings', {
+      method: 'POST',
+      body: data,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
+    json = await resp.json();
+  } catch (err) {
+    json = null;
+  }
+  if (json && json.status === 'success') {
+    // Close modal (Bootstrap 5)
+    const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
+    if (modal) modal.hide();
+    location.reload();
+  } else {
+    // Show error in modal
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger mt-3';
+    alert.innerText = (json && json.message) ? json.message : 'Failed to save settings.';
+    form.appendChild(alert);
+    if (saveBtn) saveBtn.disabled = false;
+  }
+};
+</script>
+          {% if message %}
+            {% if status == 'success' %}
+              <div class="alert alert-success mt-3">{{ message }}</div>
+            {% else %}
+              <div class="alert alert-danger mt-3">Failed to save settings: {{ message }}</div>
+            {% endif %}
+          {% endif %}
+          <div id="settings-save-spinner" class="text-center my-2" style="display:none;">
+            <div class="spinner-border text-primary" role="status" style="width: 1.5rem; height: 1.5rem;"></div>
+            <span class="ms-2">Saving...</span>
+          </div>
+          <div id="settings-save-message" class="text-center"></div>
+        </div>
+        <div class="border-top pt-3 mt-2">
+          <div class="text-center text-danger fw-bold mb-2">Danger Zone</div>
+          <button type="button" class="btn btn-danger w-100" id="delete-everything-btn">Delete Everything!</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var deleteBtn = document.getElementById('delete-everything-btn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to delete all data? This cannot be undone.')) {
+          if (confirm('This is your LAST WARNING! All data will be lost. Proceed?')) {
+            fetch('/delete_all', {method: 'POST'})
+              .then(resp => {
+                if (resp.ok) {
+                  window.location.reload();
+                } else {
+                  alert('Failed to delete data.');
+                }
+              });
+          }
+        }
+      });
+    }
+
+    // AJAX settings form submission
+    var settingsForm = document.getElementById('settings-form');
+    var saveBtn = document.getElementById('save-settings-btn');
+    var saveSpinner = document.getElementById('settings-save-spinner');
+    var saveMessage = document.getElementById('settings-save-message');
+    if (settingsForm && saveBtn && saveSpinner && saveMessage) {
+      settingsForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveSpinner.style.display = 'block';
+        saveMessage.textContent = '';
+        saveBtn.disabled = true;
+        var formData = new FormData(settingsForm);
+        fetch(settingsForm.action, {
+          method: 'POST',
+          body: formData
+        })
+        .then(resp => resp.ok ? resp.json() : Promise.reject(resp))
+        .then(data => {
+          saveSpinner.style.display = 'none';
+          saveBtn.disabled = false;
+          saveMessage.textContent = data.message || 'Settings saved successfully!';
+          saveMessage.className = 'alert alert-success';
+          setTimeout(function() {
+            var modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
+            if (modal) modal.hide();
+            saveMessage.textContent = '';
+          }, 1200);
+        })
+        .catch(() => {
+          saveSpinner.style.display = 'none';
+          saveBtn.disabled = false;
+          saveMessage.textContent = 'Failed to save settings.';
+          saveMessage.className = 'alert alert-danger';
+        });
+      });
+    }
+  });
+</script>

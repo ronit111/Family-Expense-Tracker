@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- =====================
+    Section: Investments Header & Filter Bar
+    ===================== -->
+<div class="section-header mb-4">
+    <h2>Investments Overview</h2>
+    <div class="alert alert-info d-flex align-items-center mt-2" role="alert">
+        <i class="bi bi-info-circle me-2"></i>
+        This section is read-only. You cannot edit investments here; all values are calculated automatically from your expenses.
+    </div>
+</div>
+<!-- Person Subtabs -->
+{% set base_url = url_for('investments_tab') %}
+{% include '_person_subtabs.html' %}
+
+<!-- Filter bar and 'Apply' button removed: investments section is a snapshot only, no filters needed. -->
+<!-- =====================
+    Section: Card Grid for Investments
+    ===================== -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+    {% for inv in investment_data %}
+    <div class="col">
+        <div class="card shadow-sm h-100">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <!-- Category icon -->
+                        <i class="bi {{ inv.icon }} fs-3 text-primary"></i>
+                        <span class="ms-2 fw-bold">{{ inv.category }}</span>
+                    </div>
+                    <span class="fs-5">₹ {{ '%.2f'|format(inv.amount) }}</span>
+                </div>
+                <!-- Read-only investment amount -->
+                <div class="mt-2">
+                    <span class="fw-bold">Amount:</span>
+                    <span class="fs-5 text-primary">₹ {{ '%.2f'|format(inv.amount) }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<!--
+Learning notes:
+- This grid loops over investment_data sorted by amount.
+- Each card shows the category, icon, current amount, and an inline form to edit/add the amount.
+- Bootstrap's grid system ensures responsiveness.
+- The form submits to the same route, updating the investment for the selected person/category.
+- The INR symbol (₹) is used throughout.
+-->
+
+{% endblock %}

@@ -1,0 +1,132 @@
+<!-- analytics.html: Analytics Tab for Family Expense Tracker -->
+{% extends 'base.html' %}
+{% block content %}
+<!-- =====================
+    Section: Analytics Header & Filter Bar
+    ===================== -->
+<div class="section-header mb-4">
+    <h2>Analytics</h2>
+</div>
+<!-- Person Subtabs -->
+{% set base_url = url_for('analytics') %}
+{% include '_person_subtabs.html' %}
+
+<!-- Filter Controls for Analytics -->
+<form class="row g-3 align-items-center mb-4" method="get" action="{{ url_for('analytics') }}">
+    <input type="hidden" name="person" value="{{ selected_person }}">
+    <div class="col-auto">
+        <label for="yearFilter" class="form-label mb-0">Year:</label>
+    </div>
+    <div class="col-auto">
+        <select class="form-select" id="yearFilter" name="year">
+            {% for y in years %}
+            <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <label for="monthFilter" class="form-label mb-0">Month:</label>
+    </div>
+    <div class="col-auto">
+        <select class="form-select" id="monthFilter" name="month">
+            <option value="All" {% if selected_month == 'All' %}selected{% endif %}>All Months</option>
+            {% for m in months_in_year %}
+            <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label mb-0">Pie Chart Mode:</label>
+    </div>
+    <div class="col-auto">
+        <select class="form-select" name="pie_mode">
+            <option value="month" {% if pie_mode == 'month' %}selected{% endif %}>Selected Month</option>
+            <option value="year" {% if pie_mode == 'year' %}selected{% endif %}>Whole Year</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-info">Apply</button>
+    </div>
+</form>
+
+<!-- Charts Section -->
+<div class="row g-4 mb-5">
+    <div class="col-md-8">
+        <div class="card card-body">
+            <h5 class="mb-3">Income & Expense by Month ({{ selected_year }})</h5>
+            <canvas id="barChart"></canvas>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card card-body">
+            <h5 class="mb-3">Category Breakdown ({{ pie_mode == 'month' and selected_month or selected_year }})</h5>
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Data passed from Flask (always valid JSON)
+const monthLabels = {{ month_labels|tojson }};
+const expensesData = {{ expenses_by_month|tojson }};
+const incomesData = {{ incomes_by_month|tojson }};
+const pieLabels = {{ pie_labels|tojson }};
+const pieValues = {{ pie_values|tojson }};
+
+// Bar Chart: Income & Expense
+new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+        labels: monthLabels,
+        datasets: [
+            {
+                label: 'Income (₹)',
+                data: incomesData,
+                backgroundColor: 'rgba(25,135,84,0.7)',
+                borderColor: 'rgba(25,135,84,1)',
+                borderWidth: 1
+            },
+            {
+                label: 'Expense (₹)',
+                data: expensesData,
+                backgroundColor: 'rgba(220,53,69,0.7)',
+                borderColor: 'rgba(220,53,69,1)',
+                borderWidth: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
+    }
+});
+
+// Pie Chart: Category Breakdown
+new Chart(document.getElementById('pieChart'), {
+    type: 'pie',
+    data: {
+        labels: pieLabels,
+        datasets: [{
+            data: pieValues,
+            backgroundColor: [
+                '#007bff','#6610f2','#6f42c1','#e83e8c','#fd7e14','#ffc107','#28a745','#20c997','#17a2b8','#6c757d','#343a40','#dc3545','#adb5bd'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+</script>
+<!--
+Learning notes:
+- All Jinja2 variables are rendered as valid JSON for use in JavaScript.
+- No duplicate or invalid variable declarations.
+- Chart.js code for both bar and pie charts is clean and lint-free.
+- If pieLabels and pieValues are empty, the chart will simply show nothing (no error).
+-->
+{% endblock %}

@@ -1,0 +1,25 @@
+{#
+Reusable horizontal subtabs for filtering by person.
+- 'individuals': list of person names
+- 'selected_person': currently selected person (string)
+- 'base_url': URL for the current tab (e.g., url_for('income'))
+#}
+{#
+Reusable horizontal subtabs for filtering by person.
+- 'individuals': list of person names
+- 'selected_person': currently selected person (string)
+- 'base_url': URL for the current tab (e.g., url_for('income'))
+#}
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item">
+    <a class="nav-link {% if selected_person == 'All' %}active text-white bg-primary{% else %}text-primary bg-white{% endif %}" href="{{ url_for(request.endpoint, person='All') }}">All</a>
+  </li>
+  {% for person in individuals %}
+  <li class="nav-item">
+    <a class="nav-link {% if selected_person == person %}active text-white bg-primary{% else %}text-primary bg-white{% endif %}" href="{{ url_for(request.endpoint, person=person) }}">{{ person }}</a>
+  </li>
+  {% endfor %}
+</ul>
+<!--
+Learning note: If you still see a blue square, check for stray HTML or CSS in base.html or your parent template. This file now only renders nav-pills.
+-->

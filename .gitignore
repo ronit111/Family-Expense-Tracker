@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+venv/
+ENV/
+.env/
+.venv/
+
+# VSCode and PyCharm
+.vscode/
+.idea/
+
+# Pytest cache
+.pytest_cache/
+
+# Logs
+*.log
+expense_tracker.log
+
+# Environment/config files
+.env
+*.env
+config.py
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# SQLite database
+*.db
+
+# Misc
+*.bak
+*.swp

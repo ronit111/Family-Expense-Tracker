@@ -1,0 +1,633 @@
+<!-- index.html: Home page for Expense Tracker -->
+{% extends 'base.html' %}
+{% block content %}
+<!-- =====================
+    Section: Dashboard Header & Filter Bar
+    ===================== -->
+<div class="section-header mb-4">
+    <h2>Income & Expenses Overview</h2>
+    <!-- Floating Add Entry Button (scrolls to form) -->
+    <a href="#expenseForm" class="btn btn-primary fab" title="Add Entry">
+        <i class="bi bi-plus-lg"></i> Add Entry
+    </a>
+</div>
+<!-- Filter Bar -->
+<div class="filter-bar card p-3 mb-4">
+    <form class="row g-3 align-items-center" method="get" action="{{ url_for('home') }}">
+        <div class="col-auto">
+            <label for="personFilter" class="form-label mb-0">View:</label>
+        </div>
+        <div class="col-auto">
+            <select class="form-select" id="personFilter" name="person">
+                <option value="Collective" {% if show_collective %}selected{% endif %}>All</option>
+                {% for person in individuals %}
+                <option value="{{ person }}" {% if selected_person == person %}selected{% endif %}>{{ person }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <label for="filter_month" class="form-label mb-0">Month:</label>
+        </div>
+        <div class="col-auto">
+            <input type="month" class="form-control" id="filter_month" name="filter_month" value="{{ filter_month }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-info">Apply</button>
+        </div>
+    </form>
+</div>
+
+<!-- =====================
+    Section: Card Grid for Entries
+    ===================== -->
+<div class="card-grid mb-5">
+    {% for exp in expenses %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-info text-dark">{{ exp.category }}</span>
+                <span class="fw-bold">₹{{ exp.amount }}</span>
+            </div>
+            <div class="mb-2">
+                <i class="bi bi-calendar-event"></i> {{ exp.date }}
+            </div>
+            <div class="mb-2">
+                <i class="bi bi-person"></i>
+                {% if exp.people %}
+                    {% for p in exp.people %}
+                        <span class="badge bg-secondary">{{ p }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span class="badge bg-secondary">All</span>
+                {% endif %}
+            </div>
+            <div class="mb-2">
+                <i class="bi bi-chat-left-text"></i> {{ exp.description }}
+            </div>
+            <div class="d-flex justify-content-end">
+                <a href="{{ url_for('edit_expense', expense_id=exp.id) }}" class="btn btn-sm btn-outline-warning me-2">Edit</a>
+                <form method="post" action="{{ url_for('delete_expense', expense_id=exp.id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this expense?');">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% if expenses|length == 0 %}
+    <div class="card p-5 text-center text-muted">
+        No expenses yet. Add your first entry!
+    </div>
+    {% endif %}
+</div>
+
+<!-- =====================
+    Section: Expense Entry Form (Anchor)
+    ===================== -->
+<a id="expenseForm"></a>
+<div class="card mb-5">
+    <div class="card-header">Add / Edit Expense</div>
+    <div class="card-body">
+        {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+        <form method="post" autocomplete="off" 
+              action="{% if edit_expense is defined %}{{ url_for('edit_expense', expense_id=edit_expense.id) }}{% else %}{{ url_for('home') }}{% endif %}">
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" value="{{ edit_expense.date if edit_expense is defined else today }}" max="{{ today }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="amount" class="form-label">Amount (INR)</label>
+                    <input type="number" step="0.01" class="form-control" id="amount" name="amount" value="{{ edit_expense.amount if edit_expense is defined else '' }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="category" class="form-label">Category</label>
+                    <select class="form-select" id="category" name="category" required>
+                        <option value="" disabled {% if not edit_expense or not edit_expense.category %}selected{% endif %}>Select...</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat }}" {% if edit_expense is defined and edit_expense.category == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="description" class="form-label">Description (optional)</label>
+                <input type="text" class="form-control" id="description" name="description" maxlength="100"
+                       value="{{ edit_expense.description if edit_expense is defined else '' }}">
+            </div>
+            <button type="submit" class="btn btn-success">
+                {% if edit_index is defined %}Update Expense{% else %}Add Expense{% endif %}
+            </button>
+            {% if edit_index is defined %}
+            <a href="{{ url_for('home') }}" class="btn btn-secondary ms-2">Cancel</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- =====================
+    Section: Individuals Modal (Unchanged)
+    ===================== -->
+{{ super() }}
+{% endblock %}
+    <div class="container py-4">
+        <!-- Individuals Tabs & Edit Button -->
+        <div class="row mb-3">
+            <div class="col-md-10 mx-auto position-relative">
+                <ul class="nav nav-tabs mb-2" id="personTabs">
+                    <li class="nav-item">
+                        <a class="nav-link {% if show_collective %}active{% endif %}" href="{{ url_for('home', person='Collective') }}">All</a>
+                    </li>
+                    {% for person in individuals %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if not show_collective and selected_person == person %}active{% endif %}" href="{{ url_for('home', person=person) }}">{{ person }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <!-- Load Sample Data Button for Dev/Learning -->
+                <a href="{{ url_for('load_sample_data') }}" class="btn btn-sm btn-success position-absolute end-0 top-0 me-2">Load Sample Data</a>
+                <button class="btn btn-sm btn-outline-secondary float-end" data-bs-toggle="modal" data-bs-target="#editIndividualsModal">Edit Individuals</button>
+            </div>
+        </div>
+        <!-- Edit Individuals Modal -->
+        <div class="modal fade" id="editIndividualsModal" tabindex="-1" aria-labelledby="editIndividualsModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="post" action="{{ url_for('manage_individuals') }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editIndividualsModalLabel">Edit Individuals</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="individuals-list">
+                                {% for person in individuals %} {# Use loop.index0 for index #}
+                                <div class="mb-2">
+                                    <input type="text" class="form-control" name="individuals" value="{{ person }}" required maxlength="20">
+                                </div>
+                                {% endfor %}
+                                <div id="add-person-area"></div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-link" onclick="addPersonInput()">+ Add Another</button>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <script>
+        function addPersonInput() {
+            var area = document.getElementById('add-person-area');
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.name = 'individuals';
+            input.className = 'form-control mb-2';
+            input.maxLength = 20;
+            input.required = true;
+            area.appendChild(input);
+        }
+        </script>
+        <!-- Onboarding: Ask for individuals if not set -->
+        {% if not individuals or individuals|length == 0 %}
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <form class="card card-body" method="post" action="{{ url_for('manage_individuals') }}">
+                    <h4 class="mb-3">Welcome! Who is tracking finances?</h4>
+                    <div id="onboard-list">
+                        <input type="text" class="form-control mb-2" name="individuals" placeholder="Name 1" required maxlength="20" value="">
+                        <input type="text" class="form-control mb-2" name="individuals" placeholder="Name 2" required maxlength="20" value="">
+                        <div id="onboard-add"></div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link" onclick="addOnboardInput()">+ Add Another</button>
+                    <button type="submit" class="btn btn-primary mt-3">Start Tracking</button>
+                </form>
+            </div>
+        </div>
+        <script>
+        function addOnboardInput() {
+            var area = document.getElementById('onboard-add');
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.name = 'individuals';
+            input.className = 'form-control mb-2';
+            input.maxLength = 20;
+            input.required = true;
+            area.appendChild(input);
+        }
+        </script>
+        {% endif %}
+        <h1 class="text-center mb-4">Family Expense Tracker</h1>
+        <p class="lead text-center">Track your expenses and plan your finances together.</p>
+        <hr>
+        <!-- Expense Entry Form -->
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header">Add New Expense</div>
+                    <div class="card-body">
+                        <!-- Show error if present -->
+                        {% if error %}
+                        <div class="alert alert-danger">{{ error }}</div>
+                        {% endif %}
+                        {# Expense Entry/Edit Form #}
+<form method="post" autocomplete="off" 
+      action="{% if edit_expense is defined %}{{ url_for('edit_expense', expense_id=edit_expense.id) }}{% else %}{{ url_for('home') }}{% endif %}">
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="date" class="form-label">Date</label>
+            <input type="date" class="form-control" id="date" name="date" max="{{ today }}"
+                   value="{{ edit_expense.date if edit_expense is defined else '' }}">
+        </div>
+        <div class="col-md-4">
+            <label for="amount" class="form-label">Amount (INR)</label>
+            <input type="number" step="0.01" min="0.01" class="form-control" id="amount" name="amount" required
+                   value="{{ edit_expense.amount if edit_expense is defined else '' }}">
+        </div>
+        <div class="col-md-4">
+            <label for="category" class="form-label">Category</label>
+            <select class="form-select" id="category" name="category" required>
+                <option value="" disabled {% if edit_expense is not defined %}selected{% endif %}>Select</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}" {% if edit_expense is defined and edit_expense.category == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label for="description" class="form-label">Description (optional)</label>
+        <input type="text" class="form-control" id="description" name="description" maxlength="100"
+               value="{{ edit_expense.description if edit_expense is defined else '' }}">
+    </div>
+    <button type="submit" class="btn btn-primary">
+        {% if edit_index is defined %}Update Expense{% else %}Add Expense{% endif %}
+    </button>
+    {% if edit_index is defined %}
+    <a href="{{ url_for('home') }}" class="btn btn-secondary ms-2">Cancel</a>
+    {% endif %}
+</form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- MoM and YoY Comparison Dashboard -->
+        <div class="row justify-content-center mb-3">
+            <div class="col-md-10">
+                <div class="card card-body mb-3">
+                    <h5 class="mb-3">MoM &amp; YoY Comparison</h5>
+                    <div class="row text-center">
+                        <!-- Expenses Comparison -->
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <h6>Expenses (₹)</h6>
+                            <div class="d-flex justify-content-between">
+                                <div>Current: <span class="fw-bold">₹{{ '%.2f' % curr_exp }}</span></div>
+                                <div>Prev Month: <span class="fw-bold">₹{{ '%.2f' % prev_exp }}</span></div>
+                                <div>Last Year: <span class="fw-bold">₹{{ '%.2f' % last_year_exp }}</span></div>
+                            </div>
+                            <div class="mt-2">
+                                <span class="me-3">
+                                    MoM:
+                                    {% if mom_exp is not none %}
+                                        <span class="fw-bold {% if mom_exp > 0 %}text-danger{% elif mom_exp < 0 %}text-success{% else %}text-secondary{% endif %}">
+                                            {% if mom_exp > 0 %}▲{% elif mom_exp < 0 %}▼{% else %}■{% endif %}
+                                            {{ mom_exp|round(2) }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </span>
+                                <span>
+                                    YoY:
+                                    {% if yoy_exp is not none %}
+                                        <span class="fw-bold {% if yoy_exp > 0 %}text-danger{% elif yoy_exp < 0 %}text-success{% else %}text-secondary{% endif %}">
+                                            {% if yoy_exp > 0 %}▲{% elif yoy_exp < 0 %}▼{% else %}■{% endif %}
+                                            {{ yoy_exp|round(2) }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <!-- Incomes Comparison -->
+                        <div class="col-md-6">
+                            <h6>Income (₹)</h6>
+                            <div class="d-flex justify-content-between">
+                                <div>Current: <span class="fw-bold">₹{{ '%.2f' % curr_inc }}</span></div>
+                                <div>Prev Month: <span class="fw-bold">₹{{ '%.2f' % prev_inc }}</span></div>
+                                <div>Last Year: <span class="fw-bold">₹{{ '%.2f' % last_year_inc }}</span></div>
+                            </div>
+                            <div class="mt-2">
+                                <span class="me-3">
+                                    MoM:
+                                    {% if mom_inc is not none %}
+                                        <span class="fw-bold {% if mom_inc > 0 %}text-success{% elif mom_inc < 0 %}text-danger{% else %}text-secondary{% endif %}">
+                                            {% if mom_inc > 0 %}▲{% elif mom_inc < 0 %}▼{% else %}■{% endif %}
+                                            {{ mom_inc|round(2) }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </span>
+                                <span>
+                                    YoY:
+                                    {% if yoy_inc is not none %}
+                                        <span class="fw-bold {% if yoy_inc > 0 %}text-success{% elif yoy_inc < 0 %}text-danger{% else %}text-secondary{% endif %}">
+                                            {% if yoy_inc > 0 %}▲{% elif yoy_inc < 0 %}▼{% else %}■{% endif %}
+                                            {{ yoy_inc|round(2) }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Budget & Income Form -->
+        <div class="row justify-content-center mb-3">
+            <div class="col-md-10">
+                <form class="card card-body mb-2" method="post" action="{{ url_for('set_budget_income') }}">
+                    <div class="row align-items-end">
+                        <!-- Multi-select for People; 'All' selected by default -->
+                        <div class="col-md-3">
+                            <label for="budget_people" class="form-label">People</label>
+                            <select class="form-select" id="budget_people" name="people" multiple required>
+                                <option value="All" selected>All</option>
+                                {% for person in individuals %}
+                                <option value="{{ person }}">{{ person }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="month" class="form-label">Month</label>
+                            <input type="month" class="form-control" id="month" name="month" value="{{ current_month }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="budget" class="form-label">Monthly Budget (₹)</label>
+                            <input type="number" class="form-control" id="budget" name="budget" min="0" step="0.01" value="{{ month_budget }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="income" class="form-label">Monthly Income (₹)</label>
+                            <input type="number" class="form-control" id="income" name="income" min="0" step="0.01" value="{{ month_income }}">
+                        </div>
+                        <div class="col-md-1 d-grid">
+                            <button type="submit" class="btn btn-success">Set</button>
+                        </div>
+                    </div>
+                </form>
+                <!-- Budgets Table (if any) -->
+                <!-- Each budget row gets Edit and Delete buttons -->
+                {# Robust: set month_budgets to safe default #}
+                {# Robust: set month_budgets to safe default using Jinja blocks #}
+                {% if budgets is defined %}
+                  {% set month_budgets = budgets.get(current_month, []) %}
+                {% else %}
+                  {% set month_budgets = [] %}
+                {% endif %}
+                {% if month_budgets %}
+                <div class="card card-body mb-2">
+                    <h5>Budgets for {{ current_month }}</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle">
+                            <thead>
+                                <tr>
+                                    <th>People</th>
+                                    <th>Budget (₹)</th>
+                                    <th>Income (₹)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {# Correct: loop over month_budgets for budgets table #}
+                                {% for budget in month_budgets %}
+                                <tr>
+                                    <td>
+                                        {% for p in budget.people|default([]) %}
+                                            <span class="badge bg-info text-dark">{{ p }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>{{ budget.budget }}</td>
+                                    <td>{{ budget.income }}</td>
+                                    <td>
+                                        <!-- Edit Budget Button -->
+                                        <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editBudgetModal{{ loop.index0 }}">Edit</button>
+                                        <!-- Delete Budget Button -->
+                                        <form method="post" action="{{ url_for('delete_budget', month=current_month, index=loop.index0) }}" style="display:inline;">
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this budget?');">Delete</button>
+                                        </form>
+                                        <!-- Edit Budget Modal -->
+                                        <div class="modal fade" id="editBudgetModal{{ loop.index0 }}" tabindex="-1" aria-labelledby="editBudgetModalLabel{{ loop.index0 }}" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <form method="post" action="{{ url_for('edit_budget', month=current_month, index=loop.index0) }}">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title" id="editBudgetModalLabel{{ loop.index0 }}">Edit Budget</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="mb-2">
+                                                                <label class="form-label">People</label>
+                                                                <select class="form-select" name="people" multiple required>
+                                                                    <option value="All" {% if 'All' in budget.people %}selected{% endif %}>All</option>
+                                                                    {% for person in individuals %}
+                                                                    <option value="{{ person }}" {% if person in budget.people %}selected{% endif %}>{{ person }}</option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                                <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <label class="form-label">Budget (₹)</label>
+                                                                <input type="number" class="form-control" name="budget" min="0" step="0.01" value="{{ budget.budget }}">
+                                                            </div>
+                                                            <div class="mb-2">
+                                                                <label class="form-label">Income (₹)</label>
+                                                                <input type="number" class="form-control" name="income" min="0" step="0.01" value="{{ budget.income }}">
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                <!-- Goals Table (if any) -->
+                <!-- Each goal row gets Edit and Delete buttons -->
+                {# Robust: set safe default for month_goals #}
+                {% set month_goals_safe = month_goals if month_goals is defined else [] %}
+                {% if month_goals_safe and month_goals_safe|length > 0 %}
+                <div class="card card-body">
+                    <h5 class="mb-3">Goals for {{ current_month }}</h5>
+                    {% for goal in month_goals %}
+                    <div class="mb-3">
+                        <!-- Edit Goal Button -->
+                        <div class="col-md-1 d-grid">
+                            <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#edit-goal-modal-{{ loop.index0 }}">
+                                Edit
+                            </button>
+                            <div>
+                                <strong>{{ 'Savings' if goal.type == 'save' else 'Spending Limit' }}</strong>
+                                {% if goal.category %} ({{ goal.category }}){% endif %}
+                                - ₹{{ '%.2f' % goal.amount }}
+                                {% if goal.desc %}- <span class="text-muted">{{ goal.desc }}</span>{% endif %}
+                            </div>
+                            <div>
+                                {% if goal.achieved %}
+                                    <span class="badge bg-success">Achieved</span>
+                                {% elif goal.type == 'spend' and goal.progress < 0 %}
+                                    <span class="badge bg-danger">Exceeded</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">In Progress</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="progress mt-2 goal-progress">
+                            <div class="progress-bar goal-progress-bar
+                                {% if goal.achieved %} goal-success
+                                {% elif goal.type == 'spend' and goal.progress < 0 %} goal-danger
+                                {% else %} goal-info{% endif %}"
+                                role="progressbar"
+                                style="width: {{ (goal.bar_progress * 100)|round(0) }}%;"
+                                aria-valuenow="{{ (goal.bar_progress * 100)|round(0) }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ (goal.bar_progress * 100)|round(0) }}%
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Filter Form -->
+        <div class="row justify-content-center mb-3">
+            <div class="col-md-10">
+                <form class="card card-body" method="get">
+                    <div class="row align-items-end">
+                        <div class="col-md-4">
+                            <label for="filter_category" class="form-label">Category</label>
+                            <select class="form-select" id="filter_category" name="filter_category">
+                                <option value="">All</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat }}" {% if filter_category == cat %}selected{% endif %}>{{ cat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filter_start" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="filter_start" name="filter_start" value="{{ filter_start }}" max="{{ today }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filter_end" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="filter_end" name="filter_end" value="{{ filter_end }}" max="{{ today }}">
+                        </div>
+                        <div class="col-md-2 d-grid">
+                            <button type="submit" class="btn btn-info">Apply Filter</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- Expense List Table -->
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header">Expense List</div>
+                    <div class="card-body p-0">
+                        {% if expenses and expenses|length > 0 %}
+                        <!-- Show total spent for filtered results -->
+                        <div class="alert alert-secondary m-3 mb-0">
+                            <strong>Total Spent:</strong> ₹{{ '%.2f' % total_spent }}
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Amount (INR)</th>
+                                        <th>Category</th>
+                                        <th>People</th>
+                                        <th>Description</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if split_mode %}<tr><td colspan="6" style="color:red;">SPLIT MODE ENABLED</td></tr>{% endif %}
+                                    {% if split_mode %}
+                                        {% for amount, expense in expenses %}
+                                        <tr>
+                                            <td>{{ expense.date }}</td>
+                                            <td>{{ amount|round(2) }}
+                                                {% if 'All' in expense.people %}
+                                                    <span class="text-muted" title="This is your share of a group expense">(split)</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ expense.category }}</td>
+                                            <td>
+                                                {% if expense.people %}
+                                                    {% for p in expense.people %}
+                                                        <span class="badge bg-info text-dark">{{ p }}</span>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="badge bg-secondary">All</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ expense.description }}</td>
+                                            <td>
+                                                <a href="{{ url_for('edit_expense', expense_id=expense.id) }}" class="btn btn-sm btn-warning me-1">Edit</a>
+                                                <form method="post" action="{{ url_for('delete_expense', expense_id=expense.id) }}" style="display:inline;">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this expense?');">Delete</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        {% for exp in expenses %}
+                                        <tr>
+                                            <td>{{ exp.date }}</td>
+                                            <td>{{ exp.amount }}</td>
+                                            <td>{{ exp.category }}</td>
+                                            <td>
+                                                {% if exp.people %}
+                                                    {% for p in exp.people %}
+                                                        <span class="badge bg-info text-dark">{{ p }}</span>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="badge bg-secondary">All</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ exp.description }}</td>
+                                            <td>
+                                                <a href="{{ url_for('edit_expense', expense_id=exp.id) }}" class="btn btn-sm btn-warning me-1">Edit</a>
+                                                <form method="post" action="{{ url_for('delete_expense', expense_id=exp.id) }}" style="display:inline;">
+                                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this expense?');">Delete</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="p-3 text-center text-muted">No expenses yet. Add your first expense above!</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

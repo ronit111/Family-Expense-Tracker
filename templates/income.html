@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- =====================
+    Section: Income Overview (matches your wireframe)
+    ===================== -->
+<div class="section-header mb-4">
+    <h2>Income Overview</h2>
+{% if message %}
+  <div class="alert alert-success">{{ message }}</div>
+{% endif %}
+<form id="income-form" method="post" action="/income" autocomplete="off">
+  <input type="hidden" name="month" value="{{ selected_month }}" />
+  
+</div>
+<!-- Person Subtabs -->
+{% include '_person_subtabs.html' with context %}
+
+<!-- Year Filter Dropdown -->
+<!-- Card Grid for Monthly Income Entries (one per month, matches wireframe) -->
+<div class="row row-cols-1 row-cols-md-3 g-4 mb-5">
+  {% for entry in income_entries %}
+    <div class="col">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body d-flex flex-column align-items-center justify-content-center">
+          <h5 class="card-title">{{ entry.month }}</h5>
+          <p class="card-text mb-2">
+            <strong>Income:</strong> ₹<span class="income-value">{{ entry.income | int | string | replace(',', '') }}</span>
+            <span class="income-feedback text-success ms-2" style="display:none"></span>
+          </p>
+          <input type="number" class="form-control form-control-sm income-input" style="width: 100px;" value="{{ entry.income }}" min="0" step="100" data-month="{{ entry.ym }}" data-person="{{ selected_person }}" {% if not can_edit %}disabled title="Edit income for a specific person. 'All' view is an aggregate."{% endif %}>
+        </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+document.querySelectorAll('.income-input').forEach(function(input) {
+  input.addEventListener('blur', function() {
+    const month = input.getAttribute('data-month');
+    const person = input.getAttribute('data-person');
+    const value = input.value;
+    const card = input.closest('.card-body');
+    const feedback = card.querySelector('.income-feedback');
+    const incomeValue = card.querySelector('.income-value');
+    feedback.style.display = 'none';
+    fetch('/income', {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ month: month, person: person, income: value })
+    })
+    .then(resp => resp.json())
+    .then(json => {
+      if (json && json.status === 'success') {
+        incomeValue.textContent = value;
+        feedback.textContent = 'Saved!';
+        feedback.style.display = '';
+        setTimeout(() => { feedback.style.display = 'none'; }, 1000);
+      } else {
+        feedback.textContent = 'Failed to save.';
+        feedback.classList.remove('text-success');
+        feedback.classList.add('text-danger');
+        feedback.style.display = '';
+      }
+    })
+    .catch(() => {
+      feedback.textContent = 'Failed to save.';
+      feedback.classList.remove('text-success');
+      feedback.classList.add('text-danger');
+      feedback.style.display = '';
+    });
+  });
+});
+</script>
+{% endblock %}
